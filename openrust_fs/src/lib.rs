@@ -3,9 +3,10 @@ use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use bzip2::read::BzDecoder;
 use flate2::read::GzDecoder;
 
+pub mod filestore;
 pub mod cache;
 pub mod container;
-pub mod filestore;
+pub mod reference_table;
 mod index;
 mod sector;
 
