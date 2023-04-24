@@ -1,0 +1,2 @@
+[workspace]
+members = ["openrust_fs", "openrust_game"]

@@ -1,0 +1,10 @@
+[package]
+name = "openrust_fs"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+byteorder = "1.4.3"
+bytes = "1.4.0"
+bzip2 = "0.4.4"
+flate2 = "1.0.25"
