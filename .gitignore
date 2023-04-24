@@ -71,4 +71,4 @@ package.json
 tests/rustdoc-gui/src/**.lock
 
 ## Assets
-fs/main_file_cache.*
+main_file_cache.*
