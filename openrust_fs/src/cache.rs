@@ -8,7 +8,7 @@ use crate::reference_table::ReferenceTable;
 
 #[derive(Debug)]
 pub struct Cache {
-    pub store: FileStore,
+    store: FileStore,
 }
 
 impl Cache {
@@ -39,6 +39,14 @@ impl Cache {
         }
 
         Ok(table)
+    }
+
+    pub fn store(&self) -> &FileStore {
+        &self.store
+    }
+
+    pub fn store_mut(&mut self) -> &mut FileStore {
+        &mut self.store
     }
 
     pub fn get_type_count(&self) -> usize {
