@@ -12,17 +12,17 @@ const COMPRESSION_GZIP: u8 = 2;
 
 #[derive(Debug)]
 pub struct Container {
-    pub type_id: u8,
-    pub data: Cursor<Vec<u8>>,
-    pub version: i16,
+    type_id: u8,
+    data: Cursor<Vec<u8>>,
+    version: i16,
 }
 
 impl Container {
-    pub fn decode(buffer: Cursor<Vec<u8>>) -> io::Result<Self> {
+    pub fn decode(buffer: &mut Cursor<Vec<u8>>) -> io::Result<Self> {
         Self::decode_with_key(buffer, &NULL_KEY)
     }
 
-    pub fn decode_with_key(mut buffer: Cursor<Vec<u8>>, key: &[i32; 4]) -> io::Result<Self> {
+    pub fn decode_with_key(mut buffer: &mut Cursor<Vec<u8>>, key: &[i32; 4]) -> io::Result<Self> {
         let type_id = buffer.read_u8()?;
         let length = buffer.read_i32::<BigEndian>()? as usize;
 
@@ -36,7 +36,7 @@ impl Container {
             let data = Cursor::new(buffer.clone()
                 .into_inner()
                 .split_off(DATA_OFFSET));
-            let version = decode_version(buffer)?;
+            let version = Self::decode_version(buffer)?;
 
             Ok(Self { type_id, data, version })
         } else {
@@ -56,12 +56,36 @@ impl Container {
                 return Err(Error::new(ErrorKind::InvalidData, "Length mismatch"));
             }
 
-            let version = decode_version(buffer)?;
+            let version = Self::decode_version(buffer)?;
             Ok(Self { type_id, data: Cursor::new(uncompressed), version })
         }
     }
-}
 
-fn decode_version(mut cursor: Cursor<Vec<u8>>) -> io::Result<i16> {
-    Ok(if cursor.remaining() >= 2 { cursor.read_i16::<BigEndian>()? } else { -1 })
+    fn decode_version(cursor: &mut Cursor<Vec<u8>>) -> io::Result<i16> {
+        if cursor.remaining() >= 2 { cursor.read_i16::<BigEndian>() } else { Ok(-1) }
+    }
+
+    pub fn type_id(&self) -> u8 {
+        self.type_id
+    }
+
+    pub fn set_type_id(&mut self, type_id: u8) {
+        self.type_id = type_id;
+    }
+
+    pub fn data(&self) -> &Cursor<Vec<u8>> {
+        &self.data
+    }
+
+    pub fn data_mut(&mut self) -> &mut Cursor<Vec<u8>> {
+        &mut self.data
+    }
+
+    pub fn version(&self) -> i16 {
+        self.version
+    }
+
+    pub fn set_version(&mut self, version: i16) {
+        self.version = version;
+    }
 }

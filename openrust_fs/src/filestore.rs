@@ -57,11 +57,12 @@ impl FileStore {
 
         let index = Index::decode(&mut Cursor::new(buf))?;
 
-        let mut data = vec![0; index.size as usize];
+        let mut data = vec![0; index.size() as usize];
         let mut buf = vec![0; Sector::SIZE];
 
-        let mut ptr = (index.sector as usize * Sector::SIZE) as u64;
-        let mut remaining = index.size;
+        let mut ptr = (index.sector() as usize * Sector::SIZE) as u64;
+        let mut remaining = index.size();
+        let mut chunk = 0;
 
         while remaining > 0 {
             self.data_channel.seek(SeekFrom::Start(ptr))?;
@@ -71,16 +72,28 @@ impl FileStore {
 
             if remaining >= Sector::DATA_SIZE as u32 {
                 data.splice(
-                    (sector.chunk as usize * Sector::DATA_SIZE)..((sector.chunk as usize + 1) * Sector::DATA_SIZE),
-                    sector.data.iter().cloned(),
-                );
-
-                ptr = sector.next_sector as u64 * Sector::SIZE as u64;
+                    (sector.chunk() as usize * Sector::DATA_SIZE)..((sector.chunk() as usize + 1) * Sector::DATA_SIZE),
+                    sector.data().iter().cloned());
                 remaining -= Sector::DATA_SIZE as u32;
+
+                if sector.type_id() as usize != type_id {
+                    return Err(Error::new(ErrorKind::InvalidData, "File type mismatch"));
+                }
+
+                if sector.id() as usize != file_id {
+                    return Err(Error::new(ErrorKind::InvalidData, "File id mismatch"));
+                }
+
+                if sector.chunk() != chunk {
+                    return Err(Error::new(ErrorKind::InvalidData, "Chunk mismatch"));
+                }
+
+                chunk += 1;
+                ptr = sector.next_sector() as u64 * Sector::SIZE as u64;
             } else {
                 data.splice(
-                    (sector.chunk as usize * Sector::DATA_SIZE)..,
-                    sector.data[0..remaining as usize].iter().cloned(),
+                    (sector.chunk() as usize * Sector::DATA_SIZE)..,
+                    sector.data()[0..remaining as usize].iter().cloned(),
                 );
 
                 remaining = 0;
@@ -106,6 +119,30 @@ impl FileStore {
 
         let index_size = self.index_channels[file_type].metadata()?.len();
         Ok((index_size / Index::SIZE as u64) as usize)
+    }
+
+    pub fn data_channel(&self) -> &File {
+        &self.data_channel
+    }
+
+    pub fn data_channel_mut(&mut self) -> &mut File {
+        &mut self.data_channel
+    }
+
+    pub fn index_channels(&self) -> &[File] {
+        &self.index_channels
+    }
+
+    pub fn index_channels_mut(&mut self) -> &mut [File] {
+        &mut self.index_channels
+    }
+
+    pub fn meta_channel(&self) -> &File {
+        &self.meta_channel
+    }
+
+    pub fn meta_channel_mut(&mut self) -> &mut File {
+        &mut self.meta_channel
     }
 }
 

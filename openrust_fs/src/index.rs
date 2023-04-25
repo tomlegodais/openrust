@@ -3,8 +3,8 @@ use byteorder::{BigEndian, ReadBytesExt};
 
 #[derive(Debug)]
 pub struct Index {
-    pub size: u32,
-    pub sector: u32,
+    size: u32,
+    sector: u32,
 }
 
 impl Index {
@@ -15,5 +15,13 @@ impl Index {
         let sector = buf.read_u24::<BigEndian>()?;
 
         Ok(Self { size, sector })
+    }
+
+    pub fn size(&self) -> u32 {
+        self.size
+    }
+
+    pub fn sector(&self) -> u32 {
+        self.sector
     }
 }

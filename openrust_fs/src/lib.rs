@@ -1,7 +1,10 @@
 use std::io::{self, Cursor, Error, ErrorKind, Read, Write};
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
 use bzip2::read::BzDecoder;
+use crc32fast::Hasher;
 use flate2::read::GzDecoder;
+use whirlpool::{Whirlpool, Digest};
+use whirlpool::digest::FixedOutput;
 
 pub mod filestore;
 pub mod cache;
@@ -9,6 +12,7 @@ pub mod container;
 pub mod reference_table;
 mod index;
 mod sector;
+mod checksum_table;
 
 const GOLDEN_RATIO: u32 = 0x9E3779B9;
 const ROUNDS: u32 = 32;
@@ -60,4 +64,17 @@ fn gunzip(compressed: &[u8]) -> io::Result<Vec<u8>> {
         Ok(_) => Ok(uncompressed),
         Err(e) => Err(Error::new(ErrorKind::Other, e))
     }
+}
+
+fn get_crc_checksum(buf: &Cursor<Vec<u8>>) -> u32 {
+    let mut hasher = Hasher::new();
+    hasher.update(&buf.get_ref());
+    hasher.finalize()
+}
+
+fn get_whirlpool_digest(buf: &Cursor<Vec<u8>>) -> [u8; 64] {
+    let mut whirlpool = Whirlpool::new();
+    whirlpool.update(&buf.get_ref());
+    let result: [u8; 64] = whirlpool.finalize_fixed().into();
+    result
 }

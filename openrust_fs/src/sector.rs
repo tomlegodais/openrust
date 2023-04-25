@@ -2,13 +2,13 @@ use bytes::Buf;
 use std::io::{self, Cursor, Error, ErrorKind, prelude::*};
 use byteorder::{BigEndian, ReadBytesExt};
 
-
+#[derive(Debug)]
 pub struct Sector {
-    pub type_id: u8,
-    pub id: u16,
-    pub chunk: u16,
-    pub next_sector: u32,
-    pub data: [u8; Sector::DATA_SIZE],
+    type_id: u8,
+    id: u16,
+    chunk: u16,
+    next_sector: u32,
+    data: [u8; Sector::DATA_SIZE],
 }
 
 impl Sector {
@@ -29,5 +29,25 @@ impl Sector {
         buf.read_exact(&mut data)?;
 
         Ok(Self { type_id, id, chunk, next_sector, data })
+    }
+
+    pub fn type_id(&self) -> u8 {
+        self.type_id
+    }
+    
+    pub fn id(&self) -> u16 {
+        self.id
+    }
+
+    pub fn chunk(&self) -> u16 {
+        self.chunk
+    }
+
+    pub fn next_sector(&self) -> u32 {
+        self.next_sector
+    }
+
+    pub fn data(&self) -> &[u8; Sector::DATA_SIZE] {
+        &self.data
     }
 }

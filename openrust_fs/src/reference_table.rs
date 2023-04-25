@@ -6,12 +6,12 @@ const FLAG_IDENTIFIERS: u8 = 0x01;
 const FLAG_WHIRLPOOL: u8 = 0x02;
 
 #[derive(Debug)]
-struct ChildEntry {
+pub struct ChildEntry {
     identifier: Option<i32>,
 }
 
 #[derive(Debug)]
-struct Entry {
+pub struct Entry {
     identifier: Option<i32>,
     crc: i32,
     whirlpool: [u8; 64],
@@ -28,7 +28,7 @@ pub struct ReferenceTable {
 }
 
 impl ReferenceTable {
-    pub fn decode(mut buffer: Cursor<Vec<u8>>) -> io::Result<Self> {
+    pub fn decode(buffer: &mut Cursor<Vec<u8>>) -> io::Result<Self> {
         let mut table = ReferenceTable {
             format: 0,
             version: None,
@@ -125,5 +125,89 @@ impl ReferenceTable {
         }
 
         Ok(table)
+    }
+
+    pub fn format(&self) -> u8 {
+        self.format
+    }
+
+    pub fn set_format(&mut self, format: u8) {
+        self.format = format;
+    }
+
+    pub fn version(&self) -> Option<i32> {
+        self.version
+    }
+
+    pub fn set_version(&mut self, version: Option<i32>) {
+        self.version = version;
+    }
+
+    pub fn flags(&self) -> u8 {
+        self.flags
+    }
+
+    pub fn set_flags(&mut self, flags: u8) {
+        self.flags = flags;
+    }
+
+    pub fn entries(&self) -> &HashMap<i32, Entry> {
+        &self.entries
+    }
+
+    pub fn entries_mut(&mut self) -> &mut HashMap<i32, Entry> {
+        &mut self.entries
+    }
+}
+
+impl Entry {
+    pub fn identifier(&self) -> Option<i32> {
+        self.identifier
+    }
+
+    pub fn set_identifier(&mut self, identifier: Option<i32>) {
+        self.identifier = identifier;
+    }
+
+    pub fn crc(&self) -> i32 {
+        self.crc
+    }
+
+    pub fn set_crc(&mut self, crc: i32) {
+        self.crc = crc;
+    }
+
+    pub fn whirlpool(&self) -> &[u8; 64] {
+        &self.whirlpool
+    }
+
+    pub fn set_whirlpool(&mut self, whirlpool: [u8; 64]) {
+        self.whirlpool = whirlpool;
+    }
+
+    pub fn version(&self) -> i32 {
+        self.version
+    }
+
+    pub fn set_version(&mut self, version: i32) {
+        self.version = version;
+    }
+
+    pub fn entries(&self) -> &HashMap<i32, ChildEntry> {
+        &self.entries
+    }
+
+    pub fn entries_mut(&mut self) -> &mut HashMap<i32, ChildEntry> {
+        &mut self.entries
+    }
+}
+
+impl ChildEntry {
+    pub fn identifier(&self) -> Option<i32> {
+        self.identifier
+    }
+
+    pub fn set_identifier(&mut self, identifier: Option<i32>) {
+        self.identifier = identifier;
     }
 }
