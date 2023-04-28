@@ -1,12 +1,12 @@
 use std::io::{self, Cursor, Error, ErrorKind, Read};
 use byteorder::{BigEndian, ReadBytesExt};
-use bytes::{Buf, Bytes};
-use crate::{bunzip2, decipher_xtea, gunzip};
+use bytes::{Buf, BufMut, Bytes, BytesMut};
+use crate::{bunzip2, bzip2, decipher_xtea, gunzip, gzip};
 
 static NULL_KEY: [i32; 4] = [0; 4];
 
 const DATA_OFFSET: usize = 5;
-const COMPRESSION_NONE: u8 = 0;
+pub const COMPRESSION_NONE: u8 = 0;
 const COMPRESSION_BZIP2: u8 = 1;
 const COMPRESSION_GZIP: u8 = 2;
 
@@ -18,6 +18,10 @@ pub struct Container {
 }
 
 impl Container {
+    pub fn new(type_id: u8, data: Cursor<Vec<u8>>) -> Self {
+        Self { type_id, data, version: -1 }
+    }
+
     pub fn decode(buffer: &mut Cursor<Vec<u8>>) -> io::Result<Self> {
         Self::decode_with_key(buffer, &NULL_KEY)
     }
@@ -59,6 +63,37 @@ impl Container {
             let version = Self::decode_version(buffer)?;
             Ok(Self { type_id, data: Cursor::new(uncompressed), version })
         }
+    }
+
+    pub fn encode(self) -> io::Result<Cursor<Vec<u8>>> {
+        let remaining = self.data.remaining();
+        let mut bytes = BytesMut::with_capacity(remaining);
+        bytes.put(self.data);
+
+        let compressed = match self.type_id {
+            COMPRESSION_NONE => bytes.to_vec(),
+            COMPRESSION_BZIP2 => bzip2(bytes.as_ref())?,
+            COMPRESSION_GZIP => gzip(bytes.as_ref())?,
+            _ => return Err(Error::new(ErrorKind::InvalidData, "Invalid compression type")),
+        };
+
+        let header = DATA_OFFSET + (if self.type_id == COMPRESSION_NONE { 0 } else { 4 }) + (if self.version != -1 { 2 } else { 0 });
+        let mut buf = BytesMut::with_capacity(header + compressed.len());
+
+        buf.put_u8(self.type_id);
+        buf.put_u32(compressed.len() as u32);
+
+        if self.type_id != COMPRESSION_NONE {
+            buf.put_u32(remaining as u32);
+        }
+
+        buf.put_slice(&compressed);
+
+        if self.version != -1 {
+            buf.put_u16(self.version as u16);
+        }
+
+        Ok(Cursor::new(buf.to_vec()))
     }
 
     fn decode_version(cursor: &mut Cursor<Vec<u8>>) -> io::Result<i16> {

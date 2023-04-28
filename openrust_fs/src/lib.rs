@@ -1,8 +1,11 @@
 use std::io::{self, Cursor, Error, ErrorKind, Read, Write};
 use byteorder::{BigEndian, ReadBytesExt, WriteBytesExt};
-use bzip2::read::BzDecoder;
+use bzip2::read::{BzDecoder};
+use bzip2::write::BzEncoder;
 use crc32fast::Hasher;
 use flate2::read::GzDecoder;
+use flate2::write::GzEncoder;
+use num_bigint::BigUint;
 use whirlpool::{Whirlpool, Digest};
 use whirlpool::digest::FixedOutput;
 
@@ -10,9 +13,9 @@ pub mod filestore;
 pub mod cache;
 pub mod container;
 pub mod reference_table;
+pub mod checksum_table;
 mod index;
 mod sector;
-mod checksum_table;
 
 const GOLDEN_RATIO: u32 = 0x9E3779B9;
 const ROUNDS: u32 = 32;
@@ -57,6 +60,12 @@ fn bunzip2(compressed: &[u8]) -> io::Result<Vec<u8>> {
     }
 }
 
+fn bzip2(uncompressed: &[u8]) -> io::Result<Vec<u8>> {
+    let mut encoder = BzEncoder::new(Vec::new(), bzip2::Compression::default());
+    encoder.write_all(uncompressed)?;
+    encoder.finish()
+}
+
 fn gunzip(compressed: &[u8]) -> io::Result<Vec<u8>> {
     let mut decoder = GzDecoder::new(compressed);
     let mut uncompressed = Vec::new();
@@ -66,6 +75,12 @@ fn gunzip(compressed: &[u8]) -> io::Result<Vec<u8>> {
     }
 }
 
+fn gzip(uncompressed: &[u8]) -> io::Result<Vec<u8>> {
+    let mut encoder = GzEncoder::new(Vec::new(), flate2::Compression::default());
+    encoder.write_all(uncompressed)?;
+    encoder.finish()
+}
+
 fn get_crc_checksum(buf: &Cursor<Vec<u8>>) -> u32 {
     let mut hasher = Hasher::new();
     hasher.update(&buf.get_ref());
@@ -73,8 +88,18 @@ fn get_crc_checksum(buf: &Cursor<Vec<u8>>) -> u32 {
 }
 
 fn get_whirlpool_digest(buf: &Cursor<Vec<u8>>) -> [u8; 64] {
+    hash_whirlpool(buf.get_ref())
+}
+
+fn hash_whirlpool(bytes: &Vec<u8>) -> [u8; 64] {
     let mut whirlpool = Whirlpool::new();
-    whirlpool.update(&buf.get_ref());
+    whirlpool.update(&bytes);
     let result: [u8; 64] = whirlpool.finalize_fixed().into();
     result
+}
+
+fn encrypt_rsa(data: &[u8], modulus: BigUint, private_key: BigUint) -> Vec<u8> {
+    let data = BigUint::from_bytes_be(data);
+    let ciphertext = data.modpow(&private_key, &modulus);
+    ciphertext.to_bytes_be()
 }
